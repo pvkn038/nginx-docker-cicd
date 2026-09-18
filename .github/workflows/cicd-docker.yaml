@@ -1,27 +1,52 @@
-name : to write a cicd pipeline to deploy docker container
+name : Docker cicd to ecr and ecs
 on:
   push: 
     branches : master
-      
+    
+  workflow_dispatch:
 
 jobs:
-  build:
+   build-push-deploy:
     runs-on : ubuntu-latest
     
     steps:
       - name : checkout code
-        uses : actions/checkout@v5
-        
-      - name : build the docker image
-        run : docker build -t nginximage .
+        uses : actions/checkout@v5        
+     
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
-      - name : create and run the docker container
-        run : docker run --name mycont1 -d -p 80:80 nginximage:latest
-        
-      - name : check images
-        run : docker images
-        
-      - name : check containers
-        run : docker ps 
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+  
+      - name: Build Docker image
+        run: |
+          docker build -t webpageimage:latest .
+
+
+      - name: Tag Docker image
+        run: |
+          docker tag webpageimage:latest \
+          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/webpageimage:latest
+
+
+      - name: Push Docker image to ECR
+        run: |
+          docker push \
+          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/webpageimage:latest
+
+
+      - name: Deploy to ECS
+        run: |
+          aws ecs update-service \
+            --cluster nginx-cluster \
+            --service nginx-service \
+            --force-new-deployment
     
   
