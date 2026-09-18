@@ -1,1 +1,27 @@
-name : to write a cicd pipeline to push 
+name : to write a cicd pipeline to deploy docker container
+on:
+  push: 
+    branches : master
+      
+
+jobs:
+  build:
+    runs-on : ubuntu-latest
+    
+    steps:
+      - name : checkout code
+        uses : actions/checkout@v5
+        
+      - name : build the docker image
+        run : docker build -t nginximage .
+
+      - name : create and run the docker container
+        run : docker run --name mycont1 -d -p 80:80 nginximage:latest
+        
+      - name : check images
+        run : docker images
+        
+      - name : check containers
+        run : docker ps 
+    
+  
